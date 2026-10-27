@@ -1,0 +1,23 @@
+{
+  "name": "@putianyi888/msrc",
+  "version": "0.1.0",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/putianyi889/MSRC.git"
+  },
+  "scripts": {
+    "build": "node scripts/build-npm.mjs",
+    "lintfix": "eslint . --fix",
+    "test": "node --test tests/npm.test.mjs",
+    "pack:check": "npm pack ./dist/npm --dry-run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0"
+  }
+}

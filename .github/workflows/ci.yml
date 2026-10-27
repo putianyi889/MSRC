@@ -1,0 +1,168 @@
+name: CI and packages
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      publish_python:
+        description: Publish Python packages to GitHub Release (select a matching version tag)
+        type: boolean
+        default: false
+      publish_npm:
+        description: Publish to npm (select a matching version tag)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: python scripts/check_version.py
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --locked
+
+  python:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-latest
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: python scripts/check_version.py
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          target: ${{ matrix.target }}
+          args: --release --locked --out dist/wheels
+          manylinux: '2014'
+      - run: python tests/check_artifacts.py wheel dist/wheels
+      - name: Install built wheel
+        shell: bash
+        run: python -m pip install dist/wheels/*.whl
+      - run: python -m unittest discover -s tests -p test_python.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-${{ matrix.target }}
+          path: dist/wheels/*.whl
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: dtolnay/rust-toolchain@stable
+      - run: python scripts/check_version.py
+      - run: python -m pip install 'maturin>=1.9,<2'
+      - run: maturin sdist --out dist/sdist
+      - run: python tests/check_artifacts.py sdist dist/sdist
+      - name: Install from sdist (isolated build)
+        run: python -m pip install dist/sdist/*.tar.gz
+      - run: python -m unittest discover -s tests -p test_python.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-sdist
+          path: dist/sdist/*.tar.gz
+
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - run: python scripts/check_version.py
+      - run: cargo install wasm-pack --version 0.15.0 --locked
+      - run: npm ci
+      - run: npm run lintfix
+      - run: git diff --exit-code
+      - run: npm run build
+      - run: npm pack ./dist/npm --pack-destination dist
+      - run: python tests/check_artifacts.py npm dist
+      - name: Test installed tarball
+        run: |
+          npm install --prefix .tools/consumer --ignore-scripts --no-audit --no-fund ./dist/putianyi888-msrc-*.tgz
+          MSRC_NPM_PACKAGE="$PWD/.tools/consumer/node_modules/@putianyi888/msrc" npm test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: dist/putianyi888-msrc-*.tgz
+
+  publish-python:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_python && startsWith(github.ref, 'refs/tags/v')
+    needs: [rust, python, sdist, npm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: python-*
+          merge-multiple: true
+          path: dist
+      - name: Create and check asset checksums
+        working-directory: dist
+        run: |
+          sha256sum -- *.whl *.tar.gz > SHA256SUMS
+          sha256sum --check SHA256SUMS
+      - name: Publish Python release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: >-
+          gh release create "$RELEASE_TAG"
+          dist/*.whl dist/*.tar.gz dist/SHA256SUMS
+          --verify-tag --title "$RELEASE_TAG" --generate-notes
+
+  publish-npm:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_npm && startsWith(github.ref, 'refs/tags/v')
+    needs: [rust, python, sdist, npm]
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --global npm@11
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: dist
+      - name: Publish through npm Trusted Publishing
+        run: npm publish dist/putianyi888-msrc-*.tgz --access public --provenance

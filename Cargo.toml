@@ -1,0 +1,33 @@
+[workspace]
+members = ["bindings/python", "bindings/wasm"]
+default-members = ["."]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/putianyi889/MSRC"
+
+[package]
+name = "msrc"
+description = "Lossless, versioned compression for Minesweeper replay files"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["minesweeper", "replay", "compression", "lzma"]
+categories = ["compression"]
+include = ["Cargo.toml", "Cargo.lock", "src/**", "tests/*.rs", "tests/*.py", "tests/fixtures/**", "docs/**", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md"]
+
+[dependencies]
+crc32fast = "1.5"
+lzma-rust2 = { version = "0.24", default-features = false, features = ["std", "encoder"] }
+thiserror = "2"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

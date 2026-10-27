@@ -1,0 +1,21 @@
+[package]
+name = "msrc-wasm"
+description = "WebAssembly bindings for MSRC (Node.js and browsers)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+test = false
+doctest = false
+
+[dependencies]
+msrc = { path = "../.." }
+wasm-bindgen = "0.2"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

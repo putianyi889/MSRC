@@ -1,0 +1,4 @@
+# Keep real replay files and their optional metadata local.
+*
+!.gitignore
+!README.md

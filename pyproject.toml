@@ -1,0 +1,29 @@
+[build-system]
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+
+[project]
+name = "msrc"
+dynamic = ["version"]
+description = "Lossless, versioned compression for Minesweeper replay files"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: System :: Archiving :: Compression",
+]
+
+[project.urls]
+Repository = "https://github.com/putianyi889/MSRC"
+Releases = "https://github.com/putianyi889/MSRC/releases"
+
+[tool.maturin]
+manifest-path = "bindings/python/Cargo.toml"
+python-source = "python"
+module-name = "msrc._native"
+exclude = [".tools/**", ".venv/**", "node_modules/**", "target/**", "dist/**", "**/__pycache__/**"]
