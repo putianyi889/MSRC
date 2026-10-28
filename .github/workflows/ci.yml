@@ -10,9 +10,13 @@ on:
         type: boolean
         default: false
       publish_npm:
-        description: Publish to npm (select a matching version tag)
+        description: Publish to npm (select a matching version tag, or retry from main)
         type: boolean
         default: false
+      npm_release_tag:
+        description: Existing release tag for an npm retry from main (only workflow changes allowed)
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -148,7 +152,10 @@ jobs:
           --verify-tag --title "$RELEASE_TAG" --generate-notes
 
   publish-npm:
-    if: github.event_name == 'workflow_dispatch' && inputs.publish_npm && startsWith(github.ref, 'refs/tags/v')
+    if: >-
+      github.event_name == 'workflow_dispatch' && inputs.publish_npm &&
+      (startsWith(github.ref, 'refs/tags/v') ||
+      (github.ref == 'refs/heads/main' && inputs.npm_release_tag != ''))
     needs: [rust, python, sdist, npm]
     runs-on: ubuntu-latest
     environment: npm
@@ -156,13 +163,25 @@ jobs:
       id-token: write
       contents: read
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+          registry-url: https://registry.npmjs.org
+      - name: Check release source
+        env:
+          NPM_RELEASE_TAG: ${{ inputs.npm_release_tag }}
+        run: |
+          release_tag="${NPM_RELEASE_TAG:-$GITHUB_REF_NAME}"
+          test "$release_tag" = "v$(node -p "require('./package.json').version")"
+          # Retry a CI fix without moving the published release tag.
+          git diff --exit-code "$release_tag" HEAD -- . ':(exclude).github/workflows/ci.yml'
       - run: npm install --global npm@11
       - uses: actions/download-artifact@v4
         with:
           name: npm-package
           path: dist
       - name: Publish through npm Trusted Publishing
-        run: npm publish dist/putianyi888-msrc-*.tgz --access public --provenance
+        run: npm publish ./dist/putianyi888-msrc-*.tgz --access public --provenance
