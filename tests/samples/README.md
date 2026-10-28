@@ -23,8 +23,38 @@
 如有 ZIP/7z 打包，请把内部录像解出后放进来。暂时不需要专门制作损坏文件：截断、校验
 错误和伪造长度已有合成测试。自然遇到的损坏文件可放在别处，之后单独研究。
 
-当前算法把录像当作原始字节压缩，不解析录像内容；这些真实样本用于测量压缩率和完整
-字节恢复，不能用于证明本库已经理解对应录像格式。
+V1 压缩原始字节，V2 对已识别事件布局做可逆预处理；这些真实样本用于测量压缩率和完整
+字节恢复，不等同于验证录像合法性或可回放性。
+
+格式预处理调研见[鼠标事件存储布局](../../docs/research/mouse-events/README.md)。
+只读扫描当前已识别布局并生成 `target/mouse-event-summary.json`：
+
+```powershell
+.\.venv\Scripts\python.exe scripts/inspect_mouse_events.py
+```
+
+它支持 AVF、MVF 0.97/2006/2007、RMV 1/2、EVF 0.3/0.4、EVFS 0.0 的有限布局，
+不执行回放或校验码验证；遇到未实现的版本、事件或不一致的长度会报错。
+当前新增的 6 份 MVF 均为 0.97 beta，足够开展首轮实验。如继续补充样本，优先考虑
+2006/2007、早期 MVF，以及含棋盘/指标事件的 EVF 0.4。
+`rmv2/` 原始 1,463 份录像已确认文件头版本为 2，单独扫描和双版本往返验证均通过。
+现保留 **200 份**，按棋盘/模式/NF 标志分组后取文件大小分位点，并补齐已观察到的
+事件码、nFlags 值和半字节增量边界；最小/最大文件均保留。全样本集现有 **1,038 份**。
+其余 1,263 份移至 `target/sample-archive/rmv2-2026-10-27/`，保持相对目录结构，
+恢复时可移回 `tests/samples/rmv2/`。私有选样/移动清单为 `target/rmv2-reduction-plan.json`。
+
+完整的版本对比见 [benchmark](../../docs/benchmarks/README.md)。安装当前 release 构建的
+Python 绑定后，可运行以下只读比较；每份文件预热一次、计时五次，逐次检查恢复字节：
+
+```powershell
+.\.venv\Scripts\python.exe scripts/compare_algorithms.py --rounds 5 --warmups 1 --level 6
+```
+
+结果写入 `target/algorithm-comparison.csv` 和 `target/algorithm-comparison.json`，不覆盖
+原有 `sample-report.csv`。它按文件头区分 RMV 1/2、EVF 0.3/0.4，并包含所有保留算法的压缩与解压。
+当前[精简 benchmark](../../docs/benchmarks/2026-10-27-v1-v2-reduced.md) 直接重汇总原有五轮测量，
+核对了保留文件的 SHA-256，没有重复计时；原五轮完整 CSV 保留为
+`target/algorithm-comparison-full-2301.csv`。
 
 ## 可选说明
 

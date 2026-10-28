@@ -38,15 +38,20 @@ impl From<msrc::Header> for ArchiveInfo {
 }
 
 #[pyfunction]
-#[pyo3(signature = (data, *, level = 6))]
-fn compress<'py>(py: Python<'py>, data: &[u8], level: u32) -> PyResult<Bound<'py, PyBytes>> {
+#[pyo3(signature = (data, *, level = 6, algorithm_version = 2))]
+fn compress<'py>(
+    py: Python<'py>,
+    data: &[u8],
+    level: u32,
+    algorithm_version: u16,
+) -> PyResult<Bound<'py, PyBytes>> {
     let output = py
         .detach(|| {
             msrc::compress_with_options(
                 data,
                 msrc::CompressionOptions {
                     level,
-                    ..Default::default()
+                    algorithm: msrc::Algorithm::from_id_version(1, algorithm_version)?,
                 },
             )
         })

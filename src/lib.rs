@@ -1,13 +1,14 @@
 //! Lossless compression of Minesweeper replay bytes in a versioned MSRC container.
 //!
-//! The first codec is LZMA1; the original replay is never parsed or rewritten.
+//! LZMA v2 adds lossless fixed-width replay event preprocessing; LZMA v1 remains
+//! available for both compression and decompression.
 //! Container, algorithm and package versions are independent.
 //!
 //! ```
 //! let replay = b"original replay bytes";
 //! let archive = msrc::compress(replay)?;
 //! assert_eq!(msrc::decompress(&archive)?, replay);
-//! assert_eq!(msrc::inspect(&archive)?.algorithm()?, msrc::Algorithm::LzmaV1);
+//! assert_eq!(msrc::inspect(&archive)?.algorithm()?, msrc::Algorithm::LzmaV2);
 //! # Ok::<(), msrc::Error>(())
 //! ```
 
@@ -16,6 +17,7 @@
 mod error;
 mod header;
 mod lzma;
+mod preprocess;
 
 pub use error::{Error, Result};
 pub use header::{CONTAINER_VERSION, HEADER_SIZE, Header, MAGIC};
@@ -27,26 +29,29 @@ pub const DEFAULT_MAX_MEMORY_KIB: u32 = 64 * 1024;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Algorithm {
-    #[default]
     LzmaV1,
+    #[default]
+    LzmaV2,
 }
 
 impl Algorithm {
     pub const fn id(self) -> u16 {
         match self {
-            Self::LzmaV1 => 1,
+            Self::LzmaV1 | Self::LzmaV2 => 1,
         }
     }
 
     pub const fn version(self) -> u16 {
         match self {
             Self::LzmaV1 => 1,
+            Self::LzmaV2 => 2,
         }
     }
 
     pub fn from_id_version(id: u16, version: u16) -> Result<Self> {
         match (id, version) {
             (1, 1) => Ok(Self::LzmaV1),
+            (1, 2) => Ok(Self::LzmaV2),
             _ => Err(Error::UnsupportedAlgorithm { id, version }),
         }
     }
@@ -85,7 +90,7 @@ impl Default for DecompressionLimits {
     }
 }
 
-/// Compress opaque replay bytes using LZMA v1, preset 6.
+/// Compress replay bytes using LZMA v2, preset 6.
 pub fn compress(replay: &[u8]) -> Result<Vec<u8>> {
     compress_with_options(replay, CompressionOptions::default())
 }
@@ -97,6 +102,7 @@ pub fn compress_with_options(replay: &[u8], options: CompressionOptions) -> Resu
     }
     let payload = match options.algorithm {
         Algorithm::LzmaV1 => lzma::encode(replay, options.level)?,
+        Algorithm::LzmaV2 => preprocess::encode(replay, options.level)?,
     };
     let header = Header {
         container_version: CONTAINER_VERSION,
@@ -152,6 +158,9 @@ pub fn decompress_with_limits(archive: &[u8], limits: DecompressionLimits) -> Re
     }
     let output = match algorithm {
         Algorithm::LzmaV1 => lzma::decode(&archive[HEADER_SIZE..], header.original_size, limits)?,
+        Algorithm::LzmaV2 => {
+            preprocess::decode(&archive[HEADER_SIZE..], header.original_size, limits)?
+        }
     };
     if crc32fast::hash(&output) != header.original_crc32 {
         return Err(Error::ChecksumMismatch("original"));

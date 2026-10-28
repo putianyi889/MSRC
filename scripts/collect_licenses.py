@@ -34,5 +34,7 @@ for package in sorted(metadata["packages"], key=lambda p: (p["name"], p["version
         texts[notice.read_text(encoding="utf-8").strip()].append(f"{label}/{notice.name}")
 for contents, owners in texts.items():
     lines.extend(["", "## " + ", ".join(owners), "", "```text", contents, "```"])
+lines.extend(["", "## Replay preprocessing source adaptations", "", "```text",
+              (root / "src/preprocess/LICENSE-THIRD-PARTY").read_text(encoding="utf-8").strip(), "```"])
 (root / "THIRD_PARTY_NOTICES.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 print(f"Collected {len(texts)} distinct upstream notice texts")

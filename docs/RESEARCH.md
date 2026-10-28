@@ -6,6 +6,10 @@ or reimplement their parsers.
 
 ## Existing replay formats
 
+The follow-up [mouse event storage investigation](research/mouse-events/README.md)
+records version-specific byte/bit layouts, upstream discrepancies, and local
+corpus measurements, including MVF samples and EVFS embedded replays.
+
 - [ms-toollib](https://github.com/eee555/ms-toollib) supplies Rust replay tooling
   and language bindings. Its [EVF specification](https://github.com/eee555/ms-toollib/blob/main/evf%20format%20(evf%E6%A0%87%E5%87%86).md)
   describes a structured replay format with its own evolving versions.
@@ -20,7 +24,14 @@ or reimplement their parsers.
 These references justify treating the native file as opaque bytes in v1: a generic
 LZMA stage can handle all formats, including versions and fields not yet understood
 by MSRC. This is not a claim that MSRC validates or parses AVF/MVF/RMV/EVF/RAWVF.
-No third-party replay samples are copied into this repository.
+No third-party replay samples are committed or included in distributions.
+
+MSRC 0.2.0 implements the investigated transforms in the Rust core as
+[algorithm v2](algorithms/lzma-v2.md), retaining both v1 encoders and decoders.
+Its bounded framing readers preserve raw fields and opaque data rather than
+using normalized playback events. Source adaptations carry their MIT notices.
+The [benchmark reports](benchmarks/README.md) separate replay format versions,
+including the subsequently added real RMV 2 samples.
 
 A future format-aware algorithm should first reuse suitable existing parsers and
 verify that its transform is invertible over real replay files. Parsing and

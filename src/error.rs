@@ -26,6 +26,8 @@ pub enum Error {
     OutputSizeMismatch,
     #[error("invalid LZMA v1 framing: {0}")]
     InvalidLzmaFraming(&'static str),
+    #[error("invalid LZMA v2 preprocessing: {0}")]
+    InvalidPreprocessing(&'static str),
     #[error("allocation failed or size is not representable on this platform")]
     AllocationFailed,
     #[error("LZMA codec error: {0}")]

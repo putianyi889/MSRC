@@ -1,0 +1,115 @@
+{
+  "package_version": "0.2.0",
+  "source_sha256": "5b97e6795c93ac6f1126572095dbdba2adc1534fc65ca78a4e995b4aeee49822",
+  "environment": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "cpu": "AMD Ryzen 7 4800H with Radeon Graphics",
+    "logical_cpus": 16,
+    "python": "3.14.6",
+    "implementation": "CPython",
+    "machine": "AMD64"
+  },
+  "level": 6,
+  "rounds": 5,
+  "warmups": 1,
+  "timing_statistic": "sum of per-file medians",
+  "failures": 0,
+  "groups": {
+    "avf": {
+      "files": 304,
+      "original_bytes": 9255350,
+      "v1_bytes": 1726901,
+      "v2_bytes": 830931,
+      "v2_preprocessed": 304,
+      "v1_compress_ms": 1590.3926998144016,
+      "v2_compress_ms": 3821.5926999109797,
+      "v1_decompress_ms": 133.48919985583052,
+      "v2_decompress_ms": 81.50720002595335,
+      "saved_vs_v1_percent": 51.88311316051123
+    },
+    "evf-0.3": {
+      "files": 100,
+      "original_bytes": 5112783,
+      "v1_bytes": 1087164,
+      "v2_bytes": 616889,
+      "v2_preprocessed": 100,
+      "v1_compress_ms": 886.986099940259,
+      "v2_compress_ms": 1918.489599833265,
+      "v1_decompress_ms": 99.85170033178292,
+      "v2_decompress_ms": 54.74769996362738,
+      "saved_vs_v1_percent": 43.25704309561391
+    },
+    "evf-0.4": {
+      "files": 200,
+      "original_bytes": 6059048,
+      "v1_bytes": 1157102,
+      "v2_bytes": 1043123,
+      "v2_preprocessed": 199,
+      "v1_compress_ms": 2408.9584996690974,
+      "v2_compress_ms": 3839.052499854006,
+      "v1_decompress_ms": 73.89419997343794,
+      "v2_decompress_ms": 87.96370014897548,
+      "saved_vs_v1_percent": 9.850384840748694
+    },
+    "evfs": {
+      "files": 6,
+      "original_bytes": 12092050,
+      "v1_bytes": 2096743,
+      "v2_bytes": 1980819,
+      "v2_preprocessed": 6,
+      "v1_compress_ms": 8973.006599990185,
+      "v2_compress_ms": 14101.461599988397,
+      "v1_decompress_ms": 136.78020003135316,
+      "v2_decompress_ms": 190.33020004280843,
+      "saved_vs_v1_percent": 5.528765327939567
+    },
+    "mvf": {
+      "files": 6,
+      "original_bytes": 68183,
+      "v1_bytes": 45785,
+      "v2_bytes": 20520,
+      "v2_preprocessed": 6,
+      "v1_compress_ms": 8.482799981720746,
+      "v2_compress_ms": 32.932600035564974,
+      "v1_decompress_ms": 2.0741999614983797,
+      "v2_decompress_ms": 2.1762000396847725,
+      "saved_vs_v1_percent": 55.18182810964289
+    },
+    "rmv-1": {
+      "files": 222,
+      "original_bytes": 5707346,
+      "v1_bytes": 1462755,
+      "v2_bytes": 679623,
+      "v2_preprocessed": 222,
+      "v1_compress_ms": 875.2347001864109,
+      "v2_compress_ms": 2159.5136001124047,
+      "v1_decompress_ms": 107.53459989791736,
+      "v2_decompress_ms": 63.01220023306087,
+      "saved_vs_v1_percent": 53.53815232215921
+    },
+    "rmv-2": {
+      "files": 1463,
+      "original_bytes": 38239867,
+      "v1_bytes": 14546948,
+      "v2_bytes": 9869112,
+      "v2_preprocessed": 1463,
+      "v1_compress_ms": 11486.35679972358,
+      "v2_compress_ms": 22322.759000526275,
+      "v1_decompress_ms": 768.8104001572356,
+      "v2_decompress_ms": 839.816900115693,
+      "saved_vs_v1_percent": 32.156820798424526
+    }
+  },
+  "totals": {
+    "files": 2301,
+    "original_bytes": 76534627,
+    "v1_bytes": 22123398,
+    "v2_bytes": 15041017,
+    "v2_preprocessed": 2300,
+    "v1_compress_ms": 26229.418199305655,
+    "v2_compress_ms": 48195.80160026089,
+    "v1_decompress_ms": 1322.4345002090558,
+    "v2_decompress_ms": 1319.5541005698033,
+    "saved_vs_v1_percent": 32.013079545917854
+  }
+}

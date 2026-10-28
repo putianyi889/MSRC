@@ -12,7 +12,8 @@
 The root crate contains only the container and codec. `bindings/python` and
 `bindings/wasm` depend on it. Add future codecs in the root crate, extend the
 explicit algorithm dispatch, document the new tuple in `FORMAT.md` and retain
-v1 fixture decoding. Binding layers must not implement different codecs.
+all existing encoders, decoders and fixtures. Binding layers must not implement
+different codecs. V1 and V2 are both selectable; the compression default is V2.
 
 ## Local checks
 
@@ -26,6 +27,7 @@ npm run lintfix
 python -m pip install "maturin>=1.9,<2"
 maturin develop --release --locked
 python -m unittest discover -s tests -p "test_python.py"
+python -m unittest discover -s scripts/tests
 
 npm run build
 npm test
@@ -55,6 +57,23 @@ edge cases. Samples stay outside Git and release packages; the generated CSV goe
 to `target/sample-report.csv`. This is a one-run measurement, not a statistical
 benchmark or replay-format validation.
 
+For a repeated comparison of all retained algorithm versions, build the current
+release-mode binding and run:
+
+```sh
+maturin develop --release --locked
+python scripts/compare_algorithms.py --rounds 5 --warmups 1 --level 6
+```
+
+The script alternates version order, checks byte-exact recovery on every call,
+and reports sums of per-file median times. File I/O and equality checks are
+outside the timed sections; Python binding calls and V2's candidate comparison
+are included. It separates RMV 1/2 and EVF 0.3/0.4 by headers. Private per-file
+measurements go to `target/algorithm-comparison.csv`; aggregate data go to
+`target/algorithm-comparison.json`. Use `--summary` to publish a reviewed aggregate
+snapshot alongside a new [benchmark report](benchmarks/README.md). Do not include
+private sample files or their paths in public reports.
+
 ## Build installable artifacts without accounts
 
 ```sh
@@ -77,6 +96,8 @@ running `npm test`. CI does this so the tests run against packaged files.
 The checked-in hex fixture is historical compatibility evidence: do not regenerate
 it just because encoder output changes. `python tests/generate_fixture.py` explains
 how it was originally constructed; compare decoded bytes when adding new fixtures.
+The V2 EVF 0.3/0.4 fixtures and original hex bytes were independently constructed
+by `tests/generate_v2_fixtures.py`; they also remain historical compatibility data.
 
 ## CI and publishing
 
@@ -96,14 +117,14 @@ After pushing the implementation and obtaining a successful CI run, create and
 push a tag matching the package version:
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag -a v0.2.0 -m "MSRC 0.2.0"
+git push origin v0.2.0
 ```
 
 With GitHub CLI installed and authenticated, dispatch the workflow on that tag:
 
 ```sh
-gh workflow run ci.yml --ref v0.1.0 -f publish_python=true -f publish_npm=false
+gh workflow run ci.yml --ref v0.2.0 -f publish_python=true -f publish_npm=true
 ```
 
 The workflow builds and tests all packages, downloads the Python artifacts from
@@ -118,7 +139,7 @@ An existing release is not overwritten; publish a new version for changed files.
 To install the Windows x64 wheel (CPython 3.10+), after that release exists:
 
 ```sh
-python -m pip install "https://github.com/putianyi889/MSRC/releases/download/v0.1.0/msrc-0.1.0-cp310-abi3-win_amd64.whl"
+python -m pip install "https://github.com/putianyi889/MSRC/releases/download/v0.2.0/msrc-0.2.0-cp310-abi3-win_amd64.whl"
 ```
 
 For Linux or macOS, choose the wheel matching your platform from the Release page.
@@ -127,7 +148,7 @@ Rust compiler. To build directly from the version tag instead, install Git, Rust
 and a native linker first:
 
 ```sh
-python -m pip install "git+https://github.com/putianyi889/MSRC.git@v0.1.0"
+python -m pip install "git+https://github.com/putianyi889/MSRC.git@v0.2.0"
 ```
 
 This uses [pip's supported VCS installation syntax](https://pip.pypa.io/en/stable/topics/vcs-support/).
@@ -137,9 +158,7 @@ This uses [pip's supported VCS installation syntax](https://pip.pypa.io/en/stabl
 The npm package name is `@putianyi888/msrc`, published with public access. The
 generated manifest takes its name and `publishConfig` from the root `package.json`;
 `publishConfig.access` is `public` and the registry is `https://registry.npmjs.org/`.
-The root's `private: true` applies only to the development workspace and is not
-copied into the distributable manifest. The generated manifest includes the GitHub
-repository URL for provenance.
+The generated manifest includes the GitHub repository URL for provenance.
 
 Version `0.1.0` was published manually. Subsequent releases use
 [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) with GitHub
@@ -169,10 +188,10 @@ the end-to-end authentication check.
 
 The already published `0.1.0` cannot be uploaded again. For the next npm release,
 first bump the Rust workspace and root npm versions together (for example to
-`0.1.1`), refresh the lockfiles, commit/push, and create the matching tag. Then run:
+`0.2.0`), refresh the lockfiles, commit/push, and create the matching tag. Then run:
 
 ```sh
-gh workflow run ci.yml --ref v0.1.1 -f publish_python=false -f publish_npm=true
+gh workflow run ci.yml --ref v0.2.0 -f publish_python=false -f publish_npm=true
 ```
 
 Set both options to `true` to publish both channels. Publishing depends on all
@@ -181,8 +200,9 @@ both publication options default to `false`.
 
 For later versions, update `[workspace.package]` and `package.json` together,
 refresh lockfiles, review checks and artifacts, then create the matching new tag.
-The npm `0.1.0` release was published manually; no automated trusted publication
-has yet been verified. Python GitHub Release publication is configured separately.
+The npm `0.1.0` release was published manually. A successful `publish-npm` job and
+the matching public registry version confirm the trusted publication path.
+Python GitHub Release publication is configured separately.
 
 `scripts/check_version.py` checks Rust/npm version consistency and any current tag.
 Python takes its version from the Rust workspace. Crates.io publication is optional

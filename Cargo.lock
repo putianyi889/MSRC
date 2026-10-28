@@ -43,7 +43,7 @@ checksum = "490750560fa7851fbbf5d3ab1a8750f09350ed361ed8aed85b1e1e40587812ee"
 
 [[package]]
 name = "msrc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "crc32fast",
  "lzma-rust2",
@@ -52,7 +52,7 @@ dependencies = [
 
 [[package]]
 name = "msrc-python"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "msrc",
  "pyo3",
@@ -60,7 +60,7 @@ dependencies = [
 
 [[package]]
 name = "msrc-wasm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "msrc",
  "wasm-bindgen",

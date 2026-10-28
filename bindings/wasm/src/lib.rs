@@ -12,13 +12,22 @@ fn integer(value: f64, max: u64, name: &str) -> Result<u64, JsError> {
 }
 
 #[wasm_bindgen]
-pub fn compress(data: &[u8], level: Option<f64>) -> Result<Vec<u8>, JsError> {
+pub fn compress(
+    data: &[u8],
+    level: Option<f64>,
+    algorithm_version: Option<f64>,
+) -> Result<Vec<u8>, JsError> {
     let level = integer(level.unwrap_or(6.0), 9, "level")? as u32;
+    let version = integer(
+        algorithm_version.unwrap_or(2.0),
+        u16::MAX as u64,
+        "algorithm_version",
+    )? as u16;
     Ok(msrc::compress_with_options(
         data,
         msrc::CompressionOptions {
             level,
-            ..Default::default()
+            algorithm: msrc::Algorithm::from_id_version(1, version)?,
         },
     )?)
 }

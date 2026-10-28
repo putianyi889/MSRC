@@ -29,6 +29,16 @@ fn fixture_original() -> Vec<u8> {
     bytes
 }
 
+fn compress_v1(input: &[u8]) -> msrc::Result<Vec<u8>> {
+    compress_with_options(
+        input,
+        CompressionOptions {
+            algorithm: Algorithm::LzmaV1,
+            level: 6,
+        },
+    )
+}
+
 #[test]
 fn byte_exact_roundtrips() {
     let samples = [
@@ -42,13 +52,22 @@ fn byte_exact_roundtrips() {
         b"RAWVF\r\n0.001 mv 12 24\r\nunknown metadata\0\xff".to_vec(),
     ];
     for input in samples {
-        let archive = compress(&input).unwrap();
-        assert_eq!(decompress(&archive).unwrap(), input);
-        let info = inspect(&archive).unwrap();
-        assert_eq!(info.original_size, input.len() as u64);
-        assert_eq!(info.payload_size, (archive.len() - HEADER_SIZE) as u64);
-        assert_eq!(info.algorithm().unwrap(), Algorithm::LzmaV1);
-        assert_eq!(info.container_version, 1);
+        for algorithm in [Algorithm::LzmaV1, Algorithm::LzmaV2] {
+            let archive = compress_with_options(
+                &input,
+                CompressionOptions {
+                    algorithm,
+                    level: 6,
+                },
+            )
+            .unwrap();
+            assert_eq!(decompress(&archive).unwrap(), input);
+            let info = inspect(&archive).unwrap();
+            assert_eq!(info.original_size, input.len() as u64);
+            assert_eq!(info.payload_size, (archive.len() - HEADER_SIZE) as u64);
+            assert_eq!(info.algorithm().unwrap(), algorithm);
+            assert_eq!(info.container_version, 1);
+        }
     }
 }
 
@@ -74,14 +93,16 @@ fn repetitive_bytes_shrink() {
 
 #[test]
 fn presets_are_compatible() {
-    for level in 0..=9 {
-        let options = CompressionOptions {
-            level,
-            ..Default::default()
-        };
-        let archive = compress_with_options(b"preset compatibility", options).unwrap();
-        assert_eq!(decompress(&archive).unwrap(), b"preset compatibility");
-        assert_eq!(inspect(&archive).unwrap().algorithm_version, 1);
+    for algorithm in [Algorithm::LzmaV1, Algorithm::LzmaV2] {
+        for level in 0..=9 {
+            let options = CompressionOptions { level, algorithm };
+            let archive = compress_with_options(b"preset compatibility", options).unwrap();
+            assert_eq!(decompress(&archive).unwrap(), b"preset compatibility");
+            assert_eq!(
+                inspect(&archive).unwrap().algorithm_version,
+                algorithm.version()
+            );
+        }
     }
     assert!(matches!(
         compress_with_options(
@@ -125,8 +146,8 @@ fn truncated_codec_streams_fail_even_with_valid_envelope_checksums() {
 
 #[test]
 fn unsupported_versions_and_flags_are_explicit() {
-    let original = compress(b"future").unwrap();
-    for (offset, value) in [(4, 2_u16), (6, 42), (8, 2), (10, 1)] {
+    let original = compress_v1(b"future").unwrap();
+    for (offset, value) in [(4, 2_u16), (6, 42), (8, 3), (10, 1)] {
         let mut archive = original.clone();
         archive[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
         fix_header(&mut archive);
@@ -139,7 +160,7 @@ fn unsupported_versions_and_flags_are_explicit() {
             )),
             8 => assert!(matches!(
                 error,
-                Error::UnsupportedAlgorithm { id: 1, version: 2 }
+                Error::UnsupportedAlgorithm { id: 1, version: 3 }
             )),
             10 => assert!(matches!(error, Error::UnsupportedFlags(1))),
             _ => unreachable!(),
@@ -228,7 +249,7 @@ fn empty_output_accepts_zero_output_budget() {
 
 #[test]
 fn invalid_inner_header_is_rejected() {
-    let original = compress(b"inner framing").unwrap();
+    let original = compress_v1(b"inner framing").unwrap();
     let mut properties = original.clone();
     properties[HEADER_SIZE] = 255;
     fix_payload(&mut properties);
